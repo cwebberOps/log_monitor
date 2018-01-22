@@ -12,18 +12,21 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+/*
 const timerDuration string = "10s"
-const logFile string = "/private/var/log/apache2/access_log"
 const trafficThreshold float64 = 2.0
 const rollingAvgDuration string = "2m"
 const dbPath string = "/tmp/log.db"
+*/
 
 var inAlert bool
+var cfg Config
 
-func Run() {
+func Run(logFile string, config Config) {
+	cfg = config
 	// setup the db
-	os.Remove(dbPath)
-	db, err := sql.Open("sqlite3", dbPath)
+	os.Remove(cfg.DbPath)
+	db, err := sql.Open("sqlite3", cfg.DbPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -31,7 +34,10 @@ func Run() {
 
 	migrateDB(db)
 
-	file, _ := os.Open(logFile)
+	file, err := os.Open(logFile)
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer file.Close()
 
 	// Force file to the EOF
@@ -40,7 +46,7 @@ func Run() {
 	}
 
 	for {
-		duration, err := time.ParseDuration(timerDuration)
+		duration, err := time.ParseDuration(cfg.IntervalDuration)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -61,7 +67,7 @@ func Run() {
 
 		printTop5(now.Unix(), db)
 
-		avgWindow, _ := time.ParseDuration(rollingAvgDuration)
+		avgWindow, _ := time.ParseDuration(cfg.RollingAvgDuration)
 		manageAvgTraffic(now, avgWindow, db)
 
 	}
@@ -74,7 +80,7 @@ func manageAvgTraffic(now time.Time, duration time.Duration, db *sql.DB) {
 	a := getAvgTraffic(now, duration, db)
 	log.Println("Average requests per "+duration.String()+":", a)
 
-	newState := overThreshold(a, trafficThreshold)
+	newState := overThreshold(a, cfg.TrafficThreshold)
 
 	if sendAlert(newState, inAlert) {
 		inAlert = true
@@ -151,7 +157,7 @@ func insertSection(section string, ts int64, db *sql.DB) {
 }
 
 func printTop5(ts int64, db *sql.DB) {
-	log.Println("===== Last", timerDuration, "=====")
+	log.Println("===== Last", cfg.IntervalDuration, "=====")
 
 	queryString := "SELECT section, count(*) AS c FROM logs " +
 		"WHERE ts = " + strconv.FormatInt(ts, 10) + " " +
@@ -176,4 +182,11 @@ func printTop5(ts int64, db *sql.DB) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+type Config struct {
+	IntervalDuration   string
+	TrafficThreshold   float64
+	RollingAvgDuration string
+	DbPath             string
 }

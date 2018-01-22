@@ -3,7 +3,6 @@ package cmd
 import (
 	"log"
 
-	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -15,8 +14,16 @@ var cfgFile string
 var rootCmd = &cobra.Command{
 	Use:   "log_monitor <LOGFILE>",
 	Short: "Monitor W3C Common Formated Log File",
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		pkg.Run()
+		log.Println("Starting Monitoring of:", args[0])
+		config := pkg.Config{
+			IntervalDuration:   viper.GetString("interval"),
+			TrafficThreshold:   float64(viper.GetInt("threshold")),
+			RollingAvgDuration: viper.GetString("average"),
+			DbPath:             viper.GetString("dbpath"),
+		}
+		pkg.Run(args[0], config)
 	},
 }
 
@@ -27,31 +34,15 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.log_monitor.yaml)")
-}
+	rootCmd.Flags().StringP("interval", "i", "10s", "Interval between reports. (ex: 10s, 1m, 15s)")
+	viper.BindPFlag("interval", rootCmd.Flags().Lookup("interval"))
 
-// initConfig reads in config file and ENV variables if set.
-func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Find home directory.
-		home, err := homedir.Dir()
-		if err != nil {
-			log.Fatal(err)
-		}
+	rootCmd.Flags().StringP("average", "a", "2m", "Amount of time used to calclulate the rolling average. (ex: 2m, 1m, 30s)")
+	viper.BindPFlag("average", rootCmd.Flags().Lookup("average"))
 
-		// Search config in home directory with name ".log_monitor" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".log_monitor")
-	}
+	rootCmd.Flags().String("dbpath", "/tmp/log.db", "Path to sqlite database used for managing state.")
+	viper.BindPFlag("dbpath", rootCmd.Flags().Lookup("dbpath"))
 
-	viper.AutomaticEnv() // read in environment variables that match
-
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		log.Println("Using config file:", viper.ConfigFileUsed())
-	}
+	rootCmd.Flags().IntP("threshold", "t", 5, "Threshold the rolling average is compared against for alerting.")
+	viper.BindPFlag("threshold", rootCmd.Flags().Lookup("threshold"))
 }
