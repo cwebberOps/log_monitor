@@ -57,10 +57,8 @@ func Run(logFile string, config Config) {
 			insertSection(section, now.Unix(), db)
 		}
 
-		printTop5(now.Unix(), db)
-
 		avgWindow, _ := time.ParseDuration(cfg.RollingAvgDuration)
-		manageAvgTraffic(now, avgWindow, db)
+		handleTrafficStats(now, avgWindow, db)
 
 	}
 
@@ -70,14 +68,23 @@ func sectionFromLine(line string) string {
 	logParts := strings.Split(line, "\"")
 	requestParts := strings.Split(logParts[1], " ")
 	siteParts := strings.Split(requestParts[1], "/")
-	return siteParts[1]
+	return "/" + siteParts[1]
 }
 
-func manageAvgTraffic(now time.Time, duration time.Duration, db *sql.DB) {
+func handleTrafficStats(now time.Time, duration time.Duration, db *sql.DB) {
+	log.Println("===== Last", cfg.IntervalDuration, "=====")
+	printTopN(now.Unix(), db)
 	// Get the results of average traffic from the last 2 mins
 
+	log.Println("===== General Stats =====")
 	a := getAvgTraffic(now, duration, db)
 	log.Println("Average requests per "+duration.String()+":", a)
+
+	s := getSumTraffic(now, duration, db)
+	log.Println("Sum of requests in last "+duration.String()+":", s)
+
+	t := getTotalTraffic(db)
+	log.Println("Total requests since starting:", t)
 
 	newState := overThreshold(a, cfg.TrafficThreshold)
 
@@ -119,6 +126,53 @@ func getAvgTraffic(now time.Time, duration time.Duration, db *sql.DB) float64 {
 	return 0.0
 }
 
+func getSumTraffic(now time.Time, duration time.Duration, db *sql.DB) int {
+	// We use a count because we have a row per logline
+	queryString := "SELECT COUNT(*) AS s " +
+		"FROM logs " +
+		"WHERE ts >= " + strconv.FormatInt(now.Add(-duration).Unix(), 10) + ";"
+
+	rows, err := db.Query(queryString)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var s int
+		err = rows.Scan(&s)
+		if err != nil {
+			// TODO: Better handle the errors when there hasnt been any traffic in the last
+			// duration.
+			return 0
+		}
+		return s
+	}
+	return 0
+}
+
+func getTotalTraffic(db *sql.DB) int {
+	queryString := "SELECT COUNT(*) AS c FROM logs;"
+
+	rows, err := db.Query(queryString)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var c int
+		err = rows.Scan(&c)
+		if err != nil {
+			// TODO: Better handle the errors when there hasnt been any traffic in the last
+			// duration.
+			return 0
+		}
+		return c
+	}
+	return 0
+}
+
 func overThreshold(value float64, threshold float64) bool {
 	if value >= threshold {
 		return true
@@ -155,13 +209,12 @@ func insertSection(section string, ts int64, db *sql.DB) {
 	}
 }
 
-func printTop5(ts int64, db *sql.DB) {
-	log.Println("===== Last", cfg.IntervalDuration, "=====")
+func printTopN(ts int64, db *sql.DB) {
 
 	queryString := "SELECT section, count(*) AS c FROM logs " +
 		"WHERE ts = " + strconv.FormatInt(ts, 10) + " " +
 		"GROUP BY section " +
-		"ORDER BY c DESC LIMIT 5;"
+		"ORDER BY c DESC LIMIT " + strconv.FormatInt(cfg.TopCount, 10) + ";"
 	rows, err := db.Query(queryString)
 	if err != nil {
 		log.Fatal(err)
@@ -188,4 +241,5 @@ type Config struct {
 	TrafficThreshold   float64
 	RollingAvgDuration string
 	DbPath             string
+	TopCount           int64
 }

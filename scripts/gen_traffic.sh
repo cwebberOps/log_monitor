@@ -11,4 +11,7 @@ while true; do
   sleep .$[ ( $RANDOM % 10 ) + 1 ]s
   curl http://localhost/foo/2
   sleep .$[ ( $RANDOM % 10 ) + 1 ]s
+  curl http://localhost/
+  sleep .$[ ( $RANDOM % 10 ) + 1 ]s
+  curl http://localhost/
 done

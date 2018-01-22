@@ -13,6 +13,7 @@ This is a simple go program to monitor a W3C common formatted log being written 
 1. `go get` to fetch dependencies
 2. `go run main.go` to start the program
 3. (Optionally) Run `./scripts/gen_traffic.sh` to send traffic to the webserver. (Assumes the webserver is listing on localhost:80)
+4. `go run main.go --help` for more information on options.
 
 ## Tests
 
@@ -25,11 +26,9 @@ This is a simple go program to monitor a W3C common formatted log being written 
 
 ## Improvements and TODO
 
-1. Add more useful/interesting output about the overall traffic
-2. Move to logrus to get better output handling.
-3. Not super happy with the shape of the manageAvgTraffic and getAvgTraffic functions
-4. The parsing does not account for HTTP Status and calculates all requests the same. In the future HTTP status should be broken out, etc.
-5. The parsing is janky at best. Porting https://github.com/xojoc/logparse would probably be best.
+1. Move to logrus to get better output handling.
+2. The parsing does not account for HTTP Status and calculates all requests the same. In the future HTTP status should be broken out, etc.
+3. The parsing is janky at best. Porting https://github.com/xojoc/logparse would probably be best.
 
 ## Known Issues
 

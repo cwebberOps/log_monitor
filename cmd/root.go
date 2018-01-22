@@ -22,6 +22,7 @@ var rootCmd = &cobra.Command{
 			TrafficThreshold:   float64(viper.GetInt("threshold")),
 			RollingAvgDuration: viper.GetString("average"),
 			DbPath:             viper.GetString("dbpath"),
+			TopCount:           viper.GetInt64("count"),
 		}
 		pkg.Run(args[0], config)
 	},
@@ -45,4 +46,7 @@ func init() {
 
 	rootCmd.Flags().IntP("threshold", "t", 5, "Threshold the rolling average is compared against for alerting.")
 	viper.BindPFlag("threshold", rootCmd.Flags().Lookup("threshold"))
+
+	rootCmd.Flags().IntP("count", "c", 5, "Display the top N results in last interval traffic.")
+	viper.BindPFlag("count", rootCmd.Flags().Lookup("count"))
 }
