@@ -12,18 +12,12 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-/*
-const timerDuration string = "10s"
-const trafficThreshold float64 = 2.0
-const rollingAvgDuration string = "2m"
-const dbPath string = "/tmp/log.db"
-*/
-
 var inAlert bool
 var cfg Config
 
 func Run(logFile string, config Config) {
 	cfg = config
+
 	// setup the db
 	os.Remove(cfg.DbPath)
 	db, err := sql.Open("sqlite3", cfg.DbPath)
@@ -34,6 +28,7 @@ func Run(logFile string, config Config) {
 
 	migrateDB(db)
 
+	// Open the log file
 	file, err := os.Open(logFile)
 	if err != nil {
 		log.Fatal(err)
@@ -58,11 +53,8 @@ func Run(logFile string, config Config) {
 		for scanner.Scan() {
 			line := scanner.Text()
 
-			// Terribad parsing...
-			logParts := strings.Split(line, "\"")
-			requestParts := strings.Split(logParts[1], " ")
-			siteParts := strings.Split(requestParts[1], "/")
-			insertSection(siteParts[1], now.Unix(), db)
+			section := sectionFromLine(line)
+			insertSection(section, now.Unix(), db)
 		}
 
 		printTop5(now.Unix(), db)
@@ -72,6 +64,13 @@ func Run(logFile string, config Config) {
 
 	}
 
+}
+
+func sectionFromLine(line string) string {
+	logParts := strings.Split(line, "\"")
+	requestParts := strings.Split(logParts[1], " ")
+	siteParts := strings.Split(requestParts[1], "/")
+	return siteParts[1]
 }
 
 func manageAvgTraffic(now time.Time, duration time.Duration, db *sql.DB) {

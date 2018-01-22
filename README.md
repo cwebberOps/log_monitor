@@ -27,8 +27,11 @@ This is a simple go program to monitor a W3C common formatted log being written 
 
 1. Add more useful/interesting output about the overall traffic
 2. Move to logrus to get better output handling.
-3. Factor out parsing and general db handling into functions to make main() more readable.
-4. Not super happy with the shape of the manageAvgTraffic and getAvgTraffic functions
-5. The parsing does not account for HTTP Status and calculates all requests the same. In the future HTTP status should be broken out, etc.
-6. The parsing is janky at best. Porting https://github.com/xojoc/logparse would probably be best.
+3. Not super happy with the shape of the manageAvgTraffic and getAvgTraffic functions
+4. The parsing does not account for HTTP Status and calculates all requests the same. In the future HTTP status should be broken out, etc.
+5. The parsing is janky at best. Porting https://github.com/xojoc/logparse would probably be best.
+
+## Known Issues
+
+There is a major limitation in the way that averages are being calculated. Because we are not addressing when there is zero traffic during an interval, we are not calculating a valid average if there is no traffic. Given that this is meant to deal with large amounts of traffic vs we have no traffic, it feels like a useful tradeoff.
 
