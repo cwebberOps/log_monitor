@@ -9,12 +9,14 @@ import (
 	"strings"
 	"time"
 
+	// Standard way of handling db drivers
 	_ "github.com/mattn/go-sqlite3"
 )
 
 var inAlert bool
 var cfg Config
 
+// Run the main loop of the application
 func Run(logFile string, config Config) {
 	cfg = config
 
@@ -236,6 +238,7 @@ func printTopN(ts int64, db *sql.DB) {
 	}
 }
 
+// Config stores the global config.
 type Config struct {
 	IntervalDuration   string
 	TrafficThreshold   float64
